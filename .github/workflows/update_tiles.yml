@@ -1,9 +1,9 @@
 name: Update Minecraft Map Tiles
 
 on:
-  workflow_dispatch: # 깃허브 Actions 탭에서 직접 [Run workflow] 버튼으로 실행 가능
-  repository_dispatch:
-    types: [update_tiles] # 외부 신호(명령어)로도 실행 가능
+  workflow_dispatch: # 깃허브 Actions 탭에서 수동 실행 [Run workflow] 버튼 생성
+  schedule:
+    - cron: '*/15 * * * *' # 15분마다 자동으로 타일 다운로드 및 동기화
 
 permissions:
   contents: write
@@ -15,18 +15,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download New Tiles from WeirdHost
-        run: |
-          mkdir -p tiles
-          curl -L -o tiles.zip "http://sbat.mods.kr/web/tiles" || true
-          if [ -f tiles.zip ]; then
-            unzip -o tiles.zip -d tiles/
-            rm tiles.zip
-          fi
+      # SFTP를 사용해 위어드호스트 서버의 tiles 폴더를 내 깃허브 저장소로 다운로드
+      - name: Download Tiles via SFTP
+        uses: wlixcc/SFTP-Action-Build-Execute@v1.0
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          port: ${{ secrets.SFTP_PORT }}
+          username: ${{ secrets.SFTP_USERNAME }}
+          password: ${{ secrets.SFTP_PASSWORD }}
+          local_path: './tiles/'
+          remote_path: '/config/pl3xmap/web/tiles/'
+          operation: 'download'
 
+      # 다운로드한 타일 이미지가 새로 변경되었을 경우 커밋 & 푸시
       - name: Commit and Push Changes
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add tiles/
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 실시간 지도 타일 자동 업데이트" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 SFTP를 통한 타일 자동 동기화" && git push)
