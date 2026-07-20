@@ -19,7 +19,7 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      # 외부 플러그인 없이 다이렉트로 서버에서 타일 다운로드
+      # 호스트 키 검증을 우회하여 서버에서 타일 다운로드
       - name: Download Tiles via SFTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
@@ -29,6 +29,7 @@ jobs:
         run: |
           mkdir -p ./tiles
           lftp -u "$SFTP_USER","$SFTP_PASS" -p "$SFTP_PORT" sftp://"$SFTP_HOST" <<EOF
+          set sftp:auto-confirm yes
           mirror --verbose --continue --delete --parallel=5 /config/pl3xmap/web/tiles/ ./tiles/
           quit
           EOF
