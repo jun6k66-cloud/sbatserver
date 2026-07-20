@@ -1,10 +1,9 @@
 name: Update Minecraft Map Tiles
 
 on:
-  schedule:
-    # 15분마다 자동으로 실행되도록 설정 (깃허브 스케줄러 표준 크론탭)
-    - cron: '*/15 * * * *'
-  workflow_dispatch: # 깃허브 웹에서 [Run workflow] 버튼으로 수동 실행도 가능하게 설정
+  workflow_dispatch: # 깃허브 Actions 탭에서 직접 [Run workflow] 버튼으로 실행 가능
+  repository_dispatch:
+    types: [update_tiles] # 외부 신호(명령어)로도 실행 가능
 
 permissions:
   contents: write
@@ -16,8 +15,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 위어드호스트 서버로부터 최신 tiles 데이터를 직접 동기화합니다.
-      # (서버 주소와 웹 포트가 할당되어 있다면 해당 경로에서 데이터를 긁어옵니다.)
       - name: Download New Tiles from WeirdHost
         run: |
           mkdir -p tiles
