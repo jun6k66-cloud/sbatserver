@@ -3,7 +3,7 @@ name: Update Minecraft Map Tiles
 on:
   workflow_dispatch: # 수동 실행
   schedule:
-    - cron: '0 * * * *' # 매 시 정각 자동 실행
+    - cron: '*/3 * * * *' # 3분마다 자동 실행 (원하시는 주기로 조정)
 
 permissions:
   contents: write
@@ -11,6 +11,8 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # 깃허브 액션 전체 실행 시간 제한을 15분으로 확장
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -19,7 +21,7 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      # 호스트 키 검증을 우회하여 서버에서 타일 다운로드
+      # 안정적인 타일 동기화 (옵션 최적화)
       - name: Download Tiles via SFTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
@@ -30,7 +32,10 @@ jobs:
           mkdir -p ./tiles
           lftp -u "$SFTP_USER","$SFTP_PASS" -p "$SFTP_PORT" sftp://"$SFTP_HOST" <<EOF
           set sftp:auto-confirm yes
-          mirror --verbose --continue --delete --parallel=5 /config/pl3xmap/web/tiles/ ./tiles/
+          set net:timeout 30
+          set net:max-retries 3
+          set net:reconnect-interval-base 5
+          mirror --verbose --continue --only-newer --parallel=2 /config/pl3xmap/web/tiles/ ./tiles/
           quit
           EOF
 
