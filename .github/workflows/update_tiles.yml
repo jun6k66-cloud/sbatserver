@@ -3,8 +3,6 @@ name: Update Minecraft Map Tiles
 on:
   workflow_dispatch: # 수동 실행
   schedule:
-    # ⚠️ 중요: 깃허브 액션은 3분 주기를 지원하지 않거나 임의로 차단합니다. 
-    # 최소 15분 이상, 권장 30분 단위로 설정해야 안정적으로 작동합니다.
     - cron: '*/30 * * * *' # 30분마다 자동 실행
 
 permissions:
@@ -13,21 +11,22 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # 타일 양이 많아져서 15분을 초과하면 강제 종료됩니다.
+    timeout-minutes: 15
 
     steps:
+      # 1. 깃허브 저장소의 기존 파일들(이전에 올려둔 타일들)을 완벽히 가져옴
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1 # 속도 향상을 위해 최근 커밋만 가져옴
+          fetch-depth: 0 # 기존 파일들의 타임스탬프와 이력을 보존하여 비교 정확도 향상
 
-      # 리눅스 표준 SFTP 툴(lftp) 설치
+      # 2. lftp 설치
       - name: Install lftp
         run: |
           sudo apt-get update
           sudo apt-get install -y lftp
 
-      # 안정적인 타일 동기화 (오류 발생 시 재시도 로직 강화)
+      # 3. 변경되거나 추가된 타일만 스마트하게 동기화
       - name: Download Tiles via SFTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
@@ -42,33 +41,31 @@ jobs:
           set net:max-retries 5
           set net:reconnect-interval-base 5
           
-          # 💡 [추가] 실시간 파일 전송 시 용량 변경 에러 방지
+          # 전송 중 크기 변경 에러 무시
           set xfer:verify-file-size no
           
-          # 💡 [수정] --exclude 옵션으로 플레이어 실시간 위치 파일 및 임시 파일 제외
+          # [핵심] 
+          # --only-newer : 서버의 수정 시간이 로컬보다 더 최신인 파일만 다운로드
+          # --ignore-time 옵션은 절대 넣지 않아야 날짜/시간 기반으로 차이점만 골라냄
           mirror --verbose --continue --only-newer --parallel=5 \
             --exclude-glob "*players*.json" \
             /config/pl3xmap/web/tiles/ ./tiles/
           quit
           EOF
 
-      # 변경 사항 커밋 및 푸시 (오류 방지 로직 추가)
+      # 4. 변경된 파일이 있을 때만 푸시
       - name: Commit and Push Changes
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           
-          # 타일 폴더를 git에 추가
           git add tiles/
           
-          # 변경 사항이 있는지 명확하게 체크 후 커밋/푸시
           if [ -n "$(git status --porcelain)" ]; then
-            echo "변경사항이 발견되어 커밋을 진행합니다."
+            echo "✨ 변경된 타일이 발견되어 업데이트합니다."
             git commit -m "🤖 정기 타일 업데이트 ($(date +'%Y-%m-%d %H:%M:%S'))"
-            
-            # 대용량 커밋 시 터지는 문제를 방지하기 위해 버퍼 크기 확장 후 푸시
             git config http.postBuffer 524288000
             git push origin main
           else
-            echo "업데이트된 타일 파일이 없습니다. 작업을 종료합니다."
+            echo "✅ 변경되거나 새로 추가된 타일이 없습니다. 다운로드를 스킵합니다."
           fi
