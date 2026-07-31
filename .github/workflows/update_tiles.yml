@@ -3,7 +3,7 @@ name: Update Minecraft Map Tiles
 on:
   workflow_dispatch: # 수동 실행
   schedule:
-    - cron: '*/15 * * * *' # 30분마다 자동 실행
+    - cron: '*/30 * * * *' # 30분마다 자동 실행
 
 permissions:
   contents: write
