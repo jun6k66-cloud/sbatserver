@@ -41,8 +41,9 @@ jobs:
           set net:max-retries 5
           set net:reconnect-interval-base 5
           
-          # 전송 중 크기 변경 에러 무시
+          # 전송 중 크기 변경 에러 무시 및 강제 종료 방지
           set xfer:verify-file-size no
+          set cmd:fail-exit no
           
           # [핵심] 
           # --only-newer : 서버의 수정 시간이 로컬보다 더 최신인 파일만 다운로드
