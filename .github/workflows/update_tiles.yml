@@ -29,8 +29,8 @@ jobs:
       # 3. 변경되거나 추가된 타일만 스마트하게 동기화
       - name: Download Tiles via SFTP
         env:
-          SFTP_HOST: ${{ secrets.SFTP_HOST }}
-          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_HOST: "sftp.weirdhost.xyz"
+          SFTP_PORT: "2028"
           SFTP_USER: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
         run: |
